@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ExtragereTrasaturi": {
+      "commandName": "Project",
+      "workingDirectory": "C:\\Users\\ddeni\\source\\repos\\ExtragereTrasaturi\\ExtragereTrasaturi"
+    }
+  }
+}
