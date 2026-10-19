@@ -21,6 +21,9 @@ class Program
         string caleStopwords = File.Exists("stopwords.txt") ? "stopwords.txt" : "../stopwords.txt";
         string bazaReuters = Directory.Exists("Reuters") ? "Reuters" : "../Reuters";
         string fisierIesire = "vectori.txt";
+        string folderArticole = Directory.Exists("Reuters") ? "Articole_curatate" : "../Articole_curatate";
+        string delimitator = " ";
+        Directory.CreateDirectory(folderArticole);
 
         var stopwords = new HashSet<string>(
             File.ReadAllLines(caleStopwords)
@@ -38,10 +41,12 @@ class Program
         foreach (var folder in new[] { "Training", "Testing" })
         {
             string caleFolder = Path.Combine(bazaReuters, "Reuters_34", folder);
+            string subfolderArticole = Path.Combine(folderArticole, folder);
+            Directory.CreateDirectory(subfolderArticole);
 
             foreach (var fisier in Directory.EnumerateFiles(caleFolder, "*.xml", optiuni))
             {
-                var doc = Citeste(fisier, folder, stopwords, stemmer);
+                var doc = Citeste(fisier, folder, stopwords, stemmer, subfolderArticole, delimitator);
                 documente.Add(doc);
                 foreach (var cuvant in doc.Counts.Keys)
                     dictionar.Add(cuvant);
@@ -79,7 +84,8 @@ class Program
     }
 
     static Document Citeste(string fisier, string folder,
-                            HashSet<string> stopwords, WordFrequency.PorterStemmer stemmer)
+                        HashSet<string> stopwords, WordFrequency.PorterStemmer stemmer,
+                        string subfolderArticole, string delimitator)
     {
         var xml = XDocument.Load(fisier);
         var rezultat = new Document
@@ -89,7 +95,7 @@ class Program
         };
 
         // titlu + paragrafele din <text>
-        string titlu = xml.Descendants("title").FirstOrDefault()?.Value ?? "";
+        string titlu = xml.Descendants("title").FirstOrDefault()?.Value.Trim() ?? "";
         string paragrafe = string.Join(" ",
             xml.Descendants("text").Descendants("p").Select(p => p.Value));
 
@@ -107,14 +113,21 @@ class Program
         var cuvinte = new string(caractere)
             .Split(' ', StringSplitOptions.RemoveEmptyEntries)
             .Where(w => w.Length > 1 && !stopwords.Contains(w))
-            .Select(w => stemmer.StemWord(w));
+            .Select(w => stemmer.StemWord(w))
+            .Where(w => w.Length > 0)
+            .ToList();
 
         foreach (var cuvant in cuvinte)
         {
-            if (cuvant.Length == 0) continue;
             rezultat.Counts.TryGetValue(cuvant, out int n);
             rezultat.Counts[cuvant] = n + 1;
         }
+
+        string caleArticol = Path.Combine(subfolderArticole, rezultat.Id + ".txt");
+        string continutFisier = "Titlu: " + titlu + Environment.NewLine +
+                                "Categorii: " + string.Join(" ", rezultat.Topics) + Environment.NewLine +
+                                "Cuvinte: " + string.Join(delimitator, cuvinte);
+        File.WriteAllText(caleArticol, continutFisier);
 
         return rezultat;
     }
